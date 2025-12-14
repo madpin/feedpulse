@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: feedpulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-feedpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feedpulse_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-feedpulse}
+    ports:
+      - "${POSTGRES_PORT:-5454}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-feedpulse} -d ${POSTGRES_DB:-feedpulse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for job queue
+  redis:
+    image: redis:7-alpine
+    container_name: feedpulse-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6399}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: feedpulse-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-feedpulse}:${POSTGRES_PASSWORD:-feedpulse_secret}@postgres:5432/${POSTGRES_DB:-feedpulse}
+      REDIS_URL: redis://redis:6379
+      BACKEND_PORT: ${BACKEND_PORT:-3838}
+      BACKEND_HOST: 0.0.0.0
+      NODE_ENV: ${NODE_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      FEED_UPDATE_INTERVAL_HOURS: ${FEED_UPDATE_INTERVAL_HOURS:-1}
+      USE_READABILITY_DEFAULT: ${USE_READABILITY_DEFAULT:-true}
+      MAX_CONCURRENT_FEED_UPDATES: ${MAX_CONCURRENT_FEED_UPDATES:-5}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3737}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${BACKEND_PORT:-3838}:${BACKEND_PORT:-3838}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${BACKEND_PORT:-3838}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: feedpulse-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT:-3838}
+      PORT: ${FRONTEND_PORT:-3737}
+    ports:
+      - "${FRONTEND_PORT:-3737}:${FRONTEND_PORT:-3737}"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: feedpulse-network

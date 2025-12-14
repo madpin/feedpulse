@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1765664474747,
+      "tag": "0000_tense_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765723667330,
+      "tag": "0001_add-image-url-to-feeds",
+      "breakpoints": true
+    }
+  ]
+}

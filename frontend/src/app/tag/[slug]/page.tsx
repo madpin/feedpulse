@@ -1,11 +1,15 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Tag } from 'lucide-react';
 import { FeedList } from '@/components/feeds';
 import { getTagBySlug, getFeedsByTag } from '@/lib/mock-data';
+import { tagsApi, feedsApi } from '@/lib/api';
+import type { Tag as TagType, Feed } from '@/types';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -13,13 +17,47 @@ interface PageProps {
 
 export default function TagPage({ params }: PageProps) {
   const { slug } = use(params);
-  const tag = getTagBySlug(slug);
+  const [tag, setTag] = useState<TagType | null | undefined>(USE_MOCK ? getTagBySlug(slug) : undefined);
+  const [feeds, setFeeds] = useState<Feed[]>(USE_MOCK ? getFeedsByTag(slug) : []);
+  const [isLoading, setIsLoading] = useState(!USE_MOCK);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+
+    async function fetchData() {
+      try {
+        const tagData = await tagsApi.getTag(slug);
+        setTag(tagData);
+        // Only fetch feeds if tag exists
+        const feedsData = await feedsApi.getFeeds({ tagId: tagData.id, status: 'active' });
+        setFeeds(feedsData.data);
+      } catch (err) {
+        console.error('Failed to fetch tag:', err);
+        setTag(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [slug]);
+
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading tag...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!tag) {
     notFound();
   }
-
-  const feeds = getFeedsByTag(slug);
 
   return (
     <div className="container px-4 py-8">

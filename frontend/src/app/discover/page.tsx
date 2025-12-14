@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +17,29 @@ import { Separator } from '@/components/ui/separator';
 import { FeedList } from '@/components/feeds';
 import { useFeedStore } from '@/store';
 import { mockCategories, mockTags } from '@/lib/mock-data';
+import { categoriesApi, tagsApi } from '@/lib/api';
+import type { Category, Tag } from '@/types';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 type SortOption = 'score' | 'recent' | 'posts' | 'alphabetical';
 
 export default function DiscoverPage() {
-  const { feeds } = useFeedStore();
+  const { feeds, isLoading, fetchFeeds } = useFeedStore();
+  const [categories, setCategories] = useState<Category[]>(USE_MOCK ? mockCategories : []);
+  const [tags, setTags] = useState<Tag[]>(USE_MOCK ? mockTags : []);
+
+  useEffect(() => {
+    fetchFeeds();
+    if (!USE_MOCK) {
+      categoriesApi.getCategories()
+        .then(data => setCategories(data))
+        .catch(console.error);
+      tagsApi.getPopularTags(20)
+        .then(data => setTags(data))
+        .catch(console.error);
+    }
+  }, [fetchFeeds]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedContentType, setSelectedContentType] = useState<string>('all');
@@ -107,6 +125,19 @@ export default function DiscoverPage() {
     selectedContentType !== 'all' ||
     selectedTags.length > 0;
 
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading feeds...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container px-4 py-8">
       <div className="mb-8">
@@ -136,7 +167,7 @@ export default function DiscoverPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {mockCategories.filter(c => !c.parentId).map((category) => (
+              {categories.filter(c => !c.parentId).map((category) => (
                 <SelectItem key={category.id} value={category.slug}>
                   {category.name}
                 </SelectItem>
@@ -188,7 +219,7 @@ export default function DiscoverPage() {
                 <div>
                   <h3 className="font-medium mb-3">Tags</h3>
                   <div className="flex flex-wrap gap-2">
-                    {mockTags.slice(0, 12).map((tag) => (
+                    {tags.slice(0, 12).map((tag) => (
                       <Badge
                         key={tag.id}
                         variant={selectedTags.includes(tag.slug) ? 'default' : 'outline'}
@@ -239,7 +270,7 @@ export default function DiscoverPage() {
             <div>
               <h3 className="font-medium mb-3">Tags</h3>
               <div className="flex flex-wrap gap-2">
-                {mockTags.slice(0, 12).map((tag) => (
+                {tags.slice(0, 12).map((tag) => (
                   <Badge
                     key={tag.id}
                     variant={selectedTags.includes(tag.slug) ? 'default' : 'outline'}
@@ -281,7 +312,7 @@ export default function DiscoverPage() {
               )}
               {selectedCategory !== 'all' && (
                 <Badge variant="secondary" className="gap-1">
-                  {mockCategories.find(c => c.slug === selectedCategory)?.name}
+                  {categories.find(c => c.slug === selectedCategory)?.name}
                   <X
                     className="h-3 w-3 cursor-pointer"
                     onClick={() => setSelectedCategory('all')}

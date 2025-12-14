@@ -110,9 +110,23 @@ export function FeedCard({ feed, variant = 'default' }: FeedCardProps) {
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
+          {/* Feed Image/Icon */}
+          {feed.imageUrl && (
+            <div className="flex-shrink-0">
+              <img
+                src={feed.imageUrl}
+                alt={feed.title}
+                className="w-12 h-12 rounded-lg object-cover bg-muted"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <Rss className="h-4 w-4 text-primary flex-shrink-0" />
+              {!feed.imageUrl && <Rss className="h-4 w-4 text-primary flex-shrink-0" />}
               <Link href={`/feed/${feed.id}`} className="group flex-1 min-w-0">
                 <h3 className="font-semibold text-lg group-hover:text-primary transition-colors truncate">
                   {feed.title}
@@ -129,7 +143,7 @@ export function FeedCard({ feed, variant = 'default' }: FeedCardProps) {
                 </a>
               )}
             </div>
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            <p className="text-sm text-muted-foreground line-clamp-4">
               {feed.description}
             </p>
           </div>
@@ -166,14 +180,14 @@ export function FeedCard({ feed, variant = 'default' }: FeedCardProps) {
       <CardContent className="pb-3">
         {/* Categories & Tags */}
         <div className="flex flex-wrap gap-2">
-          {feed.categories.slice(0, 3).map((category) => (
+          {(feed.categories || []).slice(0, 3).map((category) => (
             <Link key={category.id} href={`/category/${category.slug}`}>
               <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
                 {category.name}
               </Badge>
             </Link>
           ))}
-          {feed.tags.slice(0, 3).map((tag) => (
+          {(feed.tags || []).slice(0, 3).map((tag) => (
             <Link key={tag.id} href={`/tag/${tag.slug}`}>
               <Badge variant="outline" className="cursor-pointer hover:bg-muted">
                 #{tag.name}
@@ -214,10 +228,10 @@ export function FeedCard({ feed, variant = 'default' }: FeedCardProps) {
               <Avatar className="h-6 w-6">
                 <AvatarImage src={feed.submittedBy.avatarUrl} />
                 <AvatarFallback className="text-xs">
-                  {feed.submittedBy.displayName.charAt(0)}
+                  {feed.submittedBy.displayName?.charAt(0) ?? '?'}
                 </AvatarFallback>
               </Avatar>
-              <span>{feed.submittedBy.displayName}</span>
+              <span>{feed.submittedBy.displayName ?? 'Unknown'}</span>
             </Link>
           )}
 

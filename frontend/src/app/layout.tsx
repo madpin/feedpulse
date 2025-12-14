@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header, Footer, Sidebar } from "@/components/layout";
 import { LoginModal, RegisterModal, SubmitFeedModal } from "@/components/auth";
+import { AuthProvider } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
@@ -24,18 +25,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <div className="flex-1 flex">
-            <Sidebar />
-            <main className="flex-1">{children}</main>
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <div className="flex-1 flex">
+              <Sidebar />
+              <main className="flex-1">{children}</main>
+            </div>
+            <Footer />
           </div>
-          <Footer />
-        </div>
-        <LoginModal />
-        <RegisterModal />
-        <SubmitFeedModal />
-        <Toaster />
+          <LoginModal />
+          <RegisterModal />
+          <SubmitFeedModal />
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

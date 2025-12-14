@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Calendar, Activity } from 'lucide-react';
 import type { FeedDailyStats } from '@/types';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/store';
 
 interface FeedHistoryChartProps {
   dailyStats: FeedDailyStats[];
@@ -16,7 +17,8 @@ interface FeedHistoryChartProps {
 type TimeRange = '7d' | '30d' | '90d';
 
 export function FeedHistoryChart({ dailyStats, className }: FeedHistoryChartProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const timeRange = useUIStore((state) => state.feedHistoryTimeRange);
+  const setTimeRange = useUIStore((state) => state.setFeedHistoryTimeRange);
 
   const filteredStats = useMemo(() => {
     const now = new Date();
@@ -43,10 +45,19 @@ export function FeedHistoryChart({ dailyStats, className }: FeedHistoryChartProp
     return filteredStats.reduce((sum, s) => sum + s.postCount, 0);
   }, [filteredStats]);
 
+  const daysInPeriod = useMemo(() => {
+    const daysMap: Record<TimeRange, number> = {
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+    };
+    return daysMap[timeRange];
+  }, [timeRange]);
+
   const avgPostsPerDay = useMemo(() => {
-    if (filteredStats.length === 0) return 0;
-    return (totalPosts / filteredStats.length).toFixed(1);
-  }, [filteredStats, totalPosts]);
+    if (totalPosts === 0) return '0';
+    return (totalPosts / daysInPeriod).toFixed(1);
+  }, [totalPosts, daysInPeriod]);
 
   if (dailyStats.length === 0) {
     return (

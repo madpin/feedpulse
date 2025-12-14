@@ -43,6 +43,7 @@ export interface Feed {
   description?: string;
   descriptionSource: DataSource;
   siteUrl?: string;
+  imageUrl?: string;
   language?: string;
   contentType?: string;
   postingFrequency?: string;
@@ -80,6 +81,50 @@ export interface FeedPost {
   fullContent?: string;
   publishedAt?: string;
   fetchedAt: string;
+}
+
+// Feed Fetch Log types
+export interface FeedFetchLog {
+  id: string;
+  feedId: string;
+  feed?: { id: string; title?: string; url: string };
+  success: boolean;
+  statusCode?: number;
+  errorType?: string;
+  errorMessage?: string;
+  responseTimeMs?: number;
+  postsFound?: number;
+  newPosts?: number;
+  fetchedAt: string;
+}
+
+// Queue Item types
+export type QueueStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface QueueItem {
+  id: string;
+  feedId: string;
+  feed?: { id: string; title?: string; url: string };
+  priority: number;
+  status: QueueStatus;
+  triggeredBy?: string;
+  triggerer?: { id: string; displayName: string };
+  scheduledAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+export interface QueueStats {
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  total: number;
+  completedLast24h: number;
+  failedLast24h: number;
+  avgProcessingTimeMs: number;
 }
 
 // Comment types
@@ -226,4 +271,61 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+// Feed Analytics types
+export interface FeedFeatureStats {
+  enabled: boolean;
+  count?: number;
+  postsWithAuthor?: number;
+  postsWithCategories?: number;
+  postsWithMedia?: number;
+  postsWithThumbnail?: number;
+  postsWithEnclosure?: number;
+  postsWithDuration?: number;
+  postsWithFullContent?: number;
+  postsWithComments?: number;
+  percentage: number;
+  avgDurationSeconds?: number | null;
+  totalDurationSeconds?: number | null;
+}
+
+export interface FeedAnalytics {
+  feedId: string;
+  feedTitle?: string;
+  feedUrl: string;
+  
+  summary: {
+    totalPosts: number;
+    uniqueAuthors: number;
+    uniqueCategories: number;
+    dateRange: {
+      oldest: string | null;
+      newest: string | null;
+    };
+  };
+  
+  features: {
+    authors: FeedFeatureStats;
+    categories: FeedFeatureStats;
+    media: FeedFeatureStats;
+    thumbnails: FeedFeatureStats;
+    enclosures: FeedFeatureStats;
+    durations: FeedFeatureStats;
+    fullContent: FeedFeatureStats;
+    comments: FeedFeatureStats;
+  };
+  
+  content: {
+    postsWithContent: number;
+    avgContentLength: number | null;
+    avgTitleLength: number | null;
+  };
+  
+  topAuthors: { name: string; count: number }[];
+  topCategories: { name: string; count: number }[];
+  mediaTypes: { type: string; count: number }[];
+  
+  isPodcast: boolean;
+  analyzedAt: string;
 }

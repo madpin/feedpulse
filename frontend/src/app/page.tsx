@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TrendingUp, Clock, Star, ArrowRight, Rss, Users, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FeedList } from '@/components/feeds';
 import { useFeedStore, useUIStore, useAuthStore } from '@/store';
 import { mockCategories } from '@/lib/mock-data';
+import { categoriesApi, statsApi } from '@/lib/api';
+import type { Category } from '@/types';
+
+interface SiteStats {
+  feeds: number;
+  users: number;
+  categories: number;
+}
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 export default function Home() {
-  const { feeds } = useFeedStore();
+  const { feeds, isLoading, fetchFeeds } = useFeedStore();
+  const [categories, setCategories] = useState<Category[]>(USE_MOCK ? mockCategories : []);
+  const [stats, setStats] = useState<SiteStats | null>(USE_MOCK ? { feeds: 10, users: 5, categories: 15 } : null);
+
+  useEffect(() => {
+    fetchFeeds();
+    if (!USE_MOCK) {
+      categoriesApi.getCategories()
+        .then(data => setCategories(data))
+        .catch(console.error);
+      statsApi.getStats()
+        .then(data => setStats(data))
+        .catch(console.error);
+    }
+  }, [fetchFeeds]);
   const { openSubmitFeedModal } = useUIStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -20,6 +45,19 @@ export default function Home() {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ).slice(0, 5);
   const topRatedFeeds = [...activeFeeds].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5);
+
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading feeds...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container px-4 py-8">
@@ -63,7 +101,7 @@ export default function Home() {
               <Rss className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-3xl font-bold">{activeFeeds.length}</p>
+              <p className="text-3xl font-bold">{stats?.feeds ?? activeFeeds.length}</p>
               <p className="text-sm text-muted-foreground">Active Feeds</p>
             </div>
           </CardContent>
@@ -74,7 +112,7 @@ export default function Home() {
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-3xl font-bold">1,234</p>
+              <p className="text-3xl font-bold">{stats?.users?.toLocaleString() ?? '—'}</p>
               <p className="text-sm text-muted-foreground">Community Members</p>
             </div>
           </CardContent>
@@ -85,7 +123,7 @@ export default function Home() {
               <Zap className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-3xl font-bold">{mockCategories.length}</p>
+              <p className="text-3xl font-bold">{stats?.categories ?? categories.length}</p>
               <p className="text-sm text-muted-foreground">Categories</p>
             </div>
           </CardContent>
@@ -142,7 +180,7 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {mockCategories.filter(c => !c.parentId).slice(0, 8).map((category) => (
+          {categories.filter(c => !c.parentId).slice(0, 8).map((category) => (
             <Link key={category.id} href={`/category/${category.slug}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                 <CardHeader className="pb-2">

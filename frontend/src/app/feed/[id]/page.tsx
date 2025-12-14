@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -22,6 +22,8 @@ import {
   History,
   TrendingUp,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,11 +32,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { getFeedById, getCommentsByFeedId, mockFeedPosts, getFeedHistory } from '@/lib/mock-data';
+import { feedsApi, commentsApi } from '@/lib/api';
 import { FeedHistoryChart } from '@/components/feeds/feed-history-chart';
+import { FeedAnalyticsPanel } from '@/components/feeds/feed-analytics';
 import { useAuthStore, useFeedStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
-import type { Comment } from '@/types';
+import type { Feed, FeedHistorySummary, FeedPost, Comment } from '@/types';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -42,10 +47,14 @@ interface PageProps {
 
 export default function FeedDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  const feed = getFeedById(id);
-  const comments = getCommentsByFeedId(id);
-  const posts = mockFeedPosts.filter(p => p.feedId === id);
-  const feedHistory = getFeedHistory(id);
+  
+  // State for API data
+  const [feed, setFeed] = useState<Feed | null | undefined>(USE_MOCK ? getFeedById(id) : undefined);
+  const [comments, setComments] = useState<Comment[]>(USE_MOCK ? getCommentsByFeedId(id) : []);
+  const [posts, setPosts] = useState<FeedPost[]>(USE_MOCK ? mockFeedPosts.filter(p => p.feedId === id) : []);
+  const [feedHistory, setFeedHistory] = useState<FeedHistorySummary | undefined>(USE_MOCK ? getFeedHistory(id) : undefined);
+  const [isLoading, setIsLoading] = useState(!USE_MOCK);
+  const [error, setError] = useState<string | null>(null);
 
   const { isAuthenticated, user } = useAuthStore();
   const { voteFeed, toggleFavorite } = useFeedStore();
@@ -53,6 +62,69 @@ export default function FeedDetailPage({ params }: PageProps) {
 
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAllPosts, setShowAllPosts] = useState(false);
+  
+  const INITIAL_POSTS_COUNT = 3;
+
+  // Fetch data from API when not using mock
+  useEffect(() => {
+    if (USE_MOCK) return;
+
+    async function fetchData() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [feedData, historyData, commentsData, postsData] = await Promise.all([
+          feedsApi.getFeed(id),
+          feedsApi.getFeedHistory(id).catch(() => undefined),
+          commentsApi.getComments(id).catch(() => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+          feedsApi.getFeedPosts(id).catch(() => ({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 })),
+        ]);
+        setFeed(feedData);
+        setFeedHistory(historyData);
+        setComments(commentsData.data.filter(c => !c.parentId));
+        setPosts(postsData.data);
+      } catch (err) {
+        console.error('Failed to fetch feed:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load feed');
+        setFeed(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [id]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading feed...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-destructive mb-4">{error}</p>
+            <Link href="/discover">
+              <Button>Back to Discover</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!feed) {
     notFound();
@@ -181,14 +253,14 @@ export default function FeedDetailPage({ params }: PageProps) {
 
                   {/* Categories & Tags */}
                   <div className="flex flex-wrap gap-2 mt-4">
-                    {feed.categories.map((category) => (
+                    {(feed.categories || []).map((category) => (
                       <Link key={category.id} href={`/category/${category.slug}`}>
                         <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
                           {category.name}
                         </Badge>
                       </Link>
                     ))}
-                    {feed.tags.map((tag) => (
+                    {(feed.tags || []).map((tag) => (
                       <Link key={tag.id} href={`/tag/${tag.slug}`}>
                         <Badge variant="outline" className="cursor-pointer hover:bg-muted">
                           #{tag.name}
@@ -221,39 +293,83 @@ export default function FeedDetailPage({ params }: PageProps) {
             <FeedHistoryChart dailyStats={feedHistory.dailyStats} />
           )}
 
+          {/* Feed Analytics - Feature Usage */}
+          {!USE_MOCK && (
+            <FeedAnalyticsPanel feedId={id} />
+          )}
+
           {/* Recent Posts */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Recent Posts
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Recent Posts
+                  {posts.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {posts.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {posts.length > 0 ? (
-                <div className="space-y-4">
-                  {posts.map((post) => (
-                    <div key={post.id} className="border-b last:border-0 pb-4 last:pb-0">
-                      <a
-                        href={post.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium hover:text-primary transition-colors"
-                      >
-                        {post.title}
-                      </a>
-                      {post.content && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                          {post.content}
-                        </p>
+                <div className="space-y-0">
+                  {(showAllPosts ? posts : posts.slice(0, INITIAL_POSTS_COUNT)).map((post, index) => (
+                    <div 
+                      key={post.id} 
+                      className={cn(
+                        "group py-3 transition-colors hover:bg-muted/50 -mx-2 px-2 rounded-lg",
+                        index !== 0 && "border-t"
                       )}
-                      {post.publishedAt && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true })}
-                        </p>
-                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={post.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-sm hover:text-primary transition-colors line-clamp-2 flex items-center gap-1"
+                          >
+                            {post.title}
+                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                          </a>
+                          {post.content && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                              {post.content}
+                            </p>
+                          )}
+                        </div>
+                        {post.publishedAt && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                            {formatDistanceToNow(new Date(post.publishedAt), { addSuffix: true })}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
+                  
+                  {posts.length > INITIAL_POSTS_COUNT && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowAllPosts(!showAllPosts)}
+                    >
+                      {showAllPosts ? (
+                        <>
+                          <ChevronUp className="h-4 w-4 mr-2" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                          Show {posts.length - INITIAL_POSTS_COUNT} more posts
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-center py-4">

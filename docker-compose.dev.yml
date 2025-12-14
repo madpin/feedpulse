@@ -1,0 +1,48 @@
+version: '3.8'
+
+# Development compose file - only DB and Redis
+# Run npm packages locally for development
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: feedpulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-feedpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feedpulse_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-feedpulse}
+    ports:
+      - "${POSTGRES_PORT:-5454}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-feedpulse} -d ${POSTGRES_DB:-feedpulse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for job queue
+  redis:
+    image: redis:7-alpine
+    container_name: feedpulse-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6399}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: feedpulse-network

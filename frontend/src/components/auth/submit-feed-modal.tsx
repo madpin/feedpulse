@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Rss, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Rss, Loader2, CheckCircle, AlertCircle, Check, ChevronsUpDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { useFeedStore, useUIStore } from '@/store';
+import { categoriesApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import type { Category } from '@/types';
 
 type SubmissionStep = 'input' | 'analyzing' | 'success' | 'error';
 
@@ -24,6 +41,15 @@ export function SubmitFeedModal() {
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<SubmissionStep>('input');
   const [error, setError] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+
+  useEffect(() => {
+    if (isSubmitFeedModalOpen) {
+      categoriesApi.getCategories().then(setCategories).catch(console.error);
+    }
+  }, [isSubmitFeedModalOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +66,20 @@ export function SubmitFeedModal() {
     setStep('analyzing');
 
     try {
-      await submitFeed(url);
+      await submitFeed(url, selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined);
       setStep('success');
     } catch {
       setStep('error');
       setError('Failed to submit feed. Please try again.');
     }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategoryIds(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
   };
 
   const handleClose = () => {
@@ -56,6 +90,7 @@ export function SubmitFeedModal() {
       setNotes('');
       setStep('input');
       setError('');
+      setSelectedCategoryIds([]);
     }, 200);
   };
 
@@ -130,6 +165,69 @@ export function SubmitFeedModal() {
                 Enter the URL of an RSS or Atom feed. Our AI will automatically
                 extract the title, description, and categories.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categories (optional)</Label>
+              <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={categoryOpen}
+                    className="w-full justify-between"
+                  >
+                    {selectedCategoryIds.length > 0
+                      ? `${selectedCategoryIds.length} selected`
+                      : 'Select categories...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search categories..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup>
+                        {categories.map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            value={category.name}
+                            onSelect={() => toggleCategory(category.id)}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                selectedCategoryIds.includes(category.id)
+                                  ? 'opacity-100'
+                                  : 'opacity-0'
+                              )}
+                            />
+                            {category.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedCategoryIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {selectedCategoryIds.map((id) => {
+                    const cat = categories.find((c) => c.id === id);
+                    return cat ? (
+                      <Badge
+                        key={id}
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => toggleCategory(id)}
+                      >
+                        {cat.name} ×
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

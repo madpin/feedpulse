@@ -30,12 +30,13 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuthStore, useNotificationStore, useUIStore } from '@/store';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const navigation = [
   { name: 'Discover', href: '/' },
   { name: 'Categories', href: '/categories' },
+  { name: 'Advanced Search', href: '/search/advanced' },
   { name: 'Leaderboard', href: '/leaderboard' },
 ];
 
@@ -53,6 +54,11 @@ export function Header() {
     closeMobileMenu,
   } = useUIStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,64 +230,70 @@ export function Header() {
             </>
           )}
 
-          {/* Mobile Menu */}
-          <Sheet open={isMobileMenuOpen} onOpenChange={toggleMobileMenu}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                {isMobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <nav className="flex flex-col gap-4 mt-8">
-                {/* Mobile Search */}
-                <form onSubmit={handleSearch} className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search feeds..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                </form>
+          {/* Mobile Menu - only render after mount to avoid hydration mismatch */}
+          {mounted ? (
+            <Sheet open={isMobileMenuOpen} onOpenChange={toggleMobileMenu}>
+              <SheetTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="icon">
+                  {isMobileMenuOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <nav className="flex flex-col gap-4 mt-8">
+                  {/* Mobile Search */}
+                  <form onSubmit={handleSearch} className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="search"
+                        placeholder="Search feeds..."
+                        className="pl-10"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </form>
 
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={closeMobileMenu}
-                    className={cn(
-                      'text-lg font-medium transition-colors hover:text-primary py-2',
-                      pathname === item.href
-                        ? 'text-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={closeMobileMenu}
+                      className={cn(
+                        'text-lg font-medium transition-colors hover:text-primary py-2',
+                        pathname === item.href
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
 
-                {isAuthenticated && (
-                  <Button
-                    className="mt-4 gap-2"
-                    onClick={() => {
-                      closeMobileMenu();
-                      openSubmitFeedModal();
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Submit Feed
-                  </Button>
-                )}
-              </nav>
-            </SheetContent>
-          </Sheet>
+                  {isAuthenticated && (
+                    <Button
+                      className="mt-4 gap-2"
+                      onClick={() => {
+                        closeMobileMenu();
+                        openSubmitFeedModal();
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Submit Feed
+                    </Button>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
     </header>

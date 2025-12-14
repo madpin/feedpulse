@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import {
@@ -19,6 +19,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { FeedList } from '@/components/feeds';
 import { getUserById, mockFeeds, mockComments, mockLeaderboard } from '@/lib/mock-data';
+import { usersApi, commentsApi } from '@/lib/api';
+import type { User, Feed, Comment, LeaderboardEntry } from '@/types';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -26,15 +30,70 @@ interface PageProps {
 
 export default function ProfilePage({ params }: PageProps) {
   const { id } = use(params);
-  const user = getUserById(id);
+  const [user, setUser] = useState<(User & { stats?: Record<string, number>; rank?: number }) | null | undefined>(
+    USE_MOCK ? getUserById(id) : undefined
+  );
+  const [userFeeds, setUserFeeds] = useState<Feed[]>(
+    USE_MOCK ? mockFeeds.filter(f => f.submittedBy?.id === id && f.status === 'active') : []
+  );
+  const [userComments, setUserComments] = useState<Comment[]>(
+    USE_MOCK ? mockComments.filter(c => c.user.id === id) : []
+  );
+  const [leaderboardEntry, setLeaderboardEntry] = useState<LeaderboardEntry | undefined>(
+    USE_MOCK ? mockLeaderboard.find(e => e.user.id === id) : undefined
+  );
+  const [isLoading, setIsLoading] = useState(!USE_MOCK);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+
+    async function fetchData() {
+      try {
+        const [userData, feedsData] = await Promise.all([
+          usersApi.getUser(id),
+          usersApi.getUserFeeds(id),
+        ]);
+        setUser(userData);
+        setUserFeeds(feedsData.data);
+        // Create a leaderboard entry from user data
+        if (userData.stats && userData.rank) {
+          setLeaderboardEntry({
+            rank: userData.rank,
+            user: userData,
+            feedsSubmitted: userData.stats.feedsSubmitted || 0,
+            commentsCount: userData.stats.commentsCount || 0,
+            votesCast: userData.stats.votesCast || 0,
+            proposalsCount: userData.stats.proposalsCount || 0,
+            proposalsApproved: userData.stats.proposalsApproved || 0,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     notFound();
   }
-
-  const userFeeds = mockFeeds.filter(f => f.submittedBy?.id === id && f.status === 'active');
-  const userComments = mockComments.filter(c => c.user.id === id);
-  const leaderboardEntry = mockLeaderboard.find(e => e.user.id === id);
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {

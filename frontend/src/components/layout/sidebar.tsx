@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,9 +15,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockCategories, mockTags } from '@/lib/mock-data';
+import { categoriesApi, tagsApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import type { Category, Tag as TagType } from '@/types';
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 const mainNavigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -29,8 +34,27 @@ const mainNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const topCategories = mockCategories.filter(c => !c.parentId).slice(0, 8);
-  const topTags = mockTags.slice(0, 10);
+  const [categories, setCategories] = useState<Category[]>(USE_MOCK ? mockCategories.filter(c => !c.parentId).slice(0, 8) : []);
+  const [tags, setTags] = useState<TagType[]>(USE_MOCK ? mockTags.slice(0, 10) : []);
+
+  useEffect(() => {
+    if (USE_MOCK) return;
+
+    // Fetch ALL categories, then we'll sort by popularity and take top 8
+    categoriesApi.getCategories()
+      .then(data => setCategories(data))
+      .catch(console.error);
+
+    tagsApi.getPopularTags(10)
+      .then(data => setTags(data))
+      .catch(console.error);
+  }, []);
+
+  // Sort categories by feedCount (popularity) in descending order, then take top 8
+  const topCategories = [...categories]
+    .sort((a, b) => (b.feedCount || 0) - (a.feedCount || 0))
+    .slice(0, 8);
+  const topTags = tags;
 
   return (
     <aside className="hidden lg:flex flex-col w-64 border-r bg-muted/30 h-[calc(100vh-4rem)] sticky top-16">

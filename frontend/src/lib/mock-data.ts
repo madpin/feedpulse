@@ -16,7 +16,7 @@ import type {
 export const mockUsers: User[] = [
   {
     id: '1',
-    email: 'admin@feedpulse.com',
+    email: 'admin@madpin.dev',
     displayName: 'Admin User',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
     bio: 'FeedPulse administrator and RSS enthusiast.',
@@ -27,7 +27,7 @@ export const mockUsers: User[] = [
   },
   {
     id: '2',
-    email: 'jane@example.com',
+    email: 'jane@madpin.dev',
     displayName: 'Jane Smith',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane',
     bio: 'Tech blogger and feed curator. Love discovering new content sources!',
@@ -38,7 +38,7 @@ export const mockUsers: User[] = [
   },
   {
     id: '3',
-    email: 'john@example.com',
+    email: 'john@madpin.dev',
     displayName: 'John Doe',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
     bio: 'Software developer interested in tech news and programming blogs.',
@@ -49,7 +49,7 @@ export const mockUsers: User[] = [
   },
   {
     id: '4',
-    email: 'alice@example.com',
+    email: 'alice@madpin.dev',
     displayName: 'Alice Johnson',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
     bio: 'Data scientist and AI researcher.',
@@ -60,7 +60,7 @@ export const mockUsers: User[] = [
   },
   {
     id: '5',
-    email: 'bob@example.com',
+    email: 'bob@madpin.dev',
     displayName: 'Bob Wilson',
     avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
     bio: 'Podcast enthusiast and content creator.',
@@ -71,23 +71,23 @@ export const mockUsers: User[] = [
   },
 ];
 
-// Mock Categories
+// Mock Categories - feedCount is set to 0 initially, will be computed by getCategoriesWithCounts()
 export const mockCategories: Category[] = [
-  { id: '1', name: 'Technology', slug: 'technology', description: 'Tech news, programming, and software development', feedCount: 156 },
-  { id: '2', name: 'Programming', slug: 'programming', description: 'Coding tutorials and programming languages', parentId: '1', feedCount: 89 },
-  { id: '3', name: 'Web Development', slug: 'web-development', description: 'Frontend, backend, and full-stack development', parentId: '2', feedCount: 67 },
-  { id: '4', name: 'AI & Machine Learning', slug: 'ai-ml', description: 'Artificial intelligence and machine learning', parentId: '1', feedCount: 45 },
-  { id: '5', name: 'News', slug: 'news', description: 'General news and current events', feedCount: 234 },
-  { id: '6', name: 'World News', slug: 'world-news', description: 'International news coverage', parentId: '5', feedCount: 78 },
-  { id: '7', name: 'Science', slug: 'science', description: 'Scientific discoveries and research', feedCount: 112 },
-  { id: '8', name: 'Business', slug: 'business', description: 'Business news and entrepreneurship', feedCount: 98 },
-  { id: '9', name: 'Finance', slug: 'finance', description: 'Financial markets and investing', parentId: '8', feedCount: 56 },
-  { id: '10', name: 'Entertainment', slug: 'entertainment', description: 'Movies, music, and pop culture', feedCount: 145 },
-  { id: '11', name: 'Gaming', slug: 'gaming', description: 'Video games and gaming industry', parentId: '10', feedCount: 67 },
-  { id: '12', name: 'Sports', slug: 'sports', description: 'Sports news and analysis', feedCount: 89 },
-  { id: '13', name: 'Health', slug: 'health', description: 'Health, wellness, and medicine', feedCount: 76 },
-  { id: '14', name: 'Design', slug: 'design', description: 'UI/UX, graphic design, and creativity', feedCount: 54 },
-  { id: '15', name: 'Podcasts', slug: 'podcasts', description: 'Podcast feeds and audio content', feedCount: 123 },
+  { id: '1', name: 'Technology', slug: 'technology', description: 'Tech news, programming, and software development', feedCount: 0 },
+  { id: '2', name: 'Programming', slug: 'programming', description: 'Coding tutorials and programming languages', parentId: '1', feedCount: 0 },
+  { id: '3', name: 'Web Development', slug: 'web-development', description: 'Frontend, backend, and full-stack development', parentId: '2', feedCount: 0 },
+  { id: '4', name: 'AI & Machine Learning', slug: 'ai-ml', description: 'Artificial intelligence and machine learning', parentId: '1', feedCount: 0 },
+  { id: '5', name: 'News', slug: 'news', description: 'General news and current events', feedCount: 0 },
+  { id: '6', name: 'World News', slug: 'world-news', description: 'International news coverage', parentId: '5', feedCount: 0 },
+  { id: '7', name: 'Science', slug: 'science', description: 'Scientific discoveries and research', feedCount: 0 },
+  { id: '8', name: 'Business', slug: 'business', description: 'Business news and entrepreneurship', feedCount: 0 },
+  { id: '9', name: 'Finance', slug: 'finance', description: 'Financial markets and investing', parentId: '8', feedCount: 0 },
+  { id: '10', name: 'Entertainment', slug: 'entertainment', description: 'Movies, music, and pop culture', feedCount: 0 },
+  { id: '11', name: 'Gaming', slug: 'gaming', description: 'Video games and gaming industry', parentId: '10', feedCount: 0 },
+  { id: '12', name: 'Sports', slug: 'sports', description: 'Sports news and analysis', feedCount: 0 },
+  { id: '13', name: 'Health', slug: 'health', description: 'Health, wellness, and medicine', feedCount: 0 },
+  { id: '14', name: 'Design', slug: 'design', description: 'UI/UX, graphic design, and creativity', feedCount: 0 },
+  { id: '15', name: 'Podcasts', slug: 'podcasts', description: 'Podcast feeds and audio content', feedCount: 0 },
 ];
 
 // Mock Tags
@@ -627,19 +627,29 @@ export const mockNotifications: Notification[] = [
   },
 ];
 
+// Seeded pseudo-random number generator for deterministic mock data
+// This prevents hydration mismatches between server and client
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 // Mock Leaderboard
 export const mockLeaderboard: LeaderboardEntry[] = mockUsers
   .filter(u => u.role !== 'admin')
   .sort((a, b) => b.points - a.points)
-  .map((user, index) => ({
-    user,
-    rank: index + 1,
-    feedsSubmitted: Math.floor(Math.random() * 20) + 1,
-    commentsCount: Math.floor(Math.random() * 50) + 5,
-    proposalsCount: Math.floor(Math.random() * 10),
-    proposalsApproved: Math.floor(Math.random() * 5),
-    votesCast: Math.floor(Math.random() * 100) + 10,
-  }));
+  .map((user, index) => {
+    const userSeed = parseInt(user.id, 10) * 100;
+    return {
+      user,
+      rank: index + 1,
+      feedsSubmitted: Math.floor(seededRandom(userSeed + 1) * 20) + 1,
+      commentsCount: Math.floor(seededRandom(userSeed + 2) * 50) + 5,
+      proposalsCount: Math.floor(seededRandom(userSeed + 3) * 10),
+      proposalsApproved: Math.floor(seededRandom(userSeed + 4) * 5),
+      votesCast: Math.floor(seededRandom(userSeed + 5) * 100) + 10,
+    };
+  });
 
 // Helper function to generate daily stats for the past N days
 function generateDailyStats(
@@ -649,18 +659,23 @@ function generateDailyStats(
   variance: number = 0.5
 ): FeedDailyStats[] {
   const stats: FeedDailyStats[] = [];
-  const today = new Date();
+  const baseDate = new Date();
+  baseDate.setHours(0, 0, 0, 0);
+  const feedSeed = parseInt(feedId, 10) || 1;
   
   for (let i = 0; i < daysBack; i++) {
-    const date = new Date(today);
+    const date = new Date(baseDate);
     date.setDate(date.getDate() - i);
     
-    // Add some randomness to post counts
-    const randomFactor = 1 + (Math.random() - 0.5) * variance * 2;
+    // Use deterministic seeded random based on feedId and day index
+    const seed = feedSeed * 1000 + i;
+    const randomValue = seededRandom(seed);
+    const randomFactor = 1 + (randomValue - 0.5) * variance * 2;
     const postCount = Math.max(0, Math.round(avgPostsPerDay * randomFactor));
     
     // Some days might have no posts (especially for less frequent feeds)
-    if (avgPostsPerDay < 1 && Math.random() > avgPostsPerDay) {
+    const skipSeed = feedSeed * 1000 + i + 500;
+    if (avgPostsPerDay < 1 && seededRandom(skipSeed) > avgPostsPerDay) {
       continue;
     }
     
@@ -877,4 +892,20 @@ export function searchFeeds(query: string): Feed[] {
 
 export function getFeedHistory(feedId: string): FeedHistorySummary | undefined {
   return mockFeedHistories[feedId];
+}
+
+// Get categories with real feed counts computed from active feeds
+export function getCategoriesWithCounts(): Category[] {
+  const activeFeeds = mockFeeds.filter(f => f.status === 'active');
+  
+  return mockCategories.map(category => {
+    const feedCount = activeFeeds.filter(feed => 
+      feed.categories.some(c => c.id === category.id)
+    ).length;
+    
+    return {
+      ...category,
+      feedCount,
+    };
+  });
 }

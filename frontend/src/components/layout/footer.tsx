@@ -15,7 +15,6 @@ const footerLinks = {
   ],
   company: [
     { name: 'About', href: '/about' },
-    { name: 'Blog', href: '/blog' },
     { name: 'Contact', href: '/contact' },
   ],
   legal: [
@@ -40,7 +39,7 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a
-                href="https://github.com"
+                href="https://github.com/madpin/feedpulse"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
