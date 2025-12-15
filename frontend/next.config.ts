@@ -6,8 +6,6 @@ import { resolve } from 'path';
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
-  output: 'standalone',
   images: {
     remotePatterns: [
       {

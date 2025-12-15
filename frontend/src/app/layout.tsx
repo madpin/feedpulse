@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header, Footer, Sidebar } from "@/components/layout";
-import { LoginModal, RegisterModal, SubmitFeedModal } from "@/components/auth";
-import { AuthProvider } from "@/components/providers";
-import { Toaster } from "@/components/ui/sonner";
+import { ClientLayout } from "@/components/layout/client-layout";
+
+export const dynamic = 'force-dynamic';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,20 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <div className="flex-1 flex">
-              <Sidebar />
-              <main className="flex-1">{children}</main>
-            </div>
-            <Footer />
-          </div>
-          <LoginModal />
-          <RegisterModal />
-          <SubmitFeedModal />
-          <Toaster />
-        </AuthProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
