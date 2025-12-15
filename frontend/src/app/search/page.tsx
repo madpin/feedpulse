@@ -15,7 +15,7 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 function SearchResults() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const query = searchParams?.get('q') || '';
   const [results, setResults] = useState<Feed[]>(USE_MOCK && query ? searchFeeds(query) : []);
   const [isLoading, setIsLoading] = useState(!USE_MOCK && !!query);
 
