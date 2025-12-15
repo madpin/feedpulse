@@ -3,8 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClientLayout } from "@/components/layout/client-layout";
 
-export const dynamic = 'force-dynamic';
-
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
