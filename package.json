@@ -4,6 +4,7 @@
   "private": true,
   "description": "Community-driven RSS feed discovery platform",
   "scripts": {
+    "postinstall": "npm install --prefix backend && npm install --prefix frontend",
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
     "clean": "rm -rf frontend/.next/dev/lock backend/dist",
     "dev": "npm run clean && concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
