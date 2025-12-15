@@ -18,7 +18,13 @@ import type {
   QueueStats,
 } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3838';
+// Safe API URL getter that handles SSR/prerendering where process may be undefined
+const getApiUrl = (): string => {
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return 'http://localhost:3838';
+};
 
 // Token management
 let accessToken: string | null = null;
@@ -84,7 +90,7 @@ async function fetchApi<T>(
   
   console.log(`[API] ${options.method || 'GET'} ${endpoint}`, { hasToken: !!accessToken });
   
-  const response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
+  const response = await fetch(`${getApiUrl()}${endpoint}`, fetchOptions);
   
   // Handle token refresh
   if (response.status === 401 && refreshToken) {
@@ -92,7 +98,7 @@ async function fetchApi<T>(
     if (refreshed) {
       // Retry with new token
       (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
-      const retryResponse = await fetch(`${API_URL}${endpoint}`, {
+      const retryResponse = await fetch(`${getApiUrl()}${endpoint}`, {
         ...fetchOptions,
         headers,
       });
@@ -113,7 +119,7 @@ async function refreshAccessToken(): Promise<boolean> {
     const { refreshToken: token } = getTokens();
     if (!token) return false;
     
-    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+    const response = await fetch(`${getApiUrl()}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: token }),
@@ -614,13 +620,13 @@ async function ingestorValidateStream(
   results: ValidationResult[];
 }> {
   const { accessToken } = getTokens();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3838';
+  const apiUrl = getApiUrl();
   const { timeoutMs = 15000, concurrency = 5 } = options || {};
   
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
     
-    fetch(`${API_URL}/api/admin/ingestor/validate`, {
+    fetch(`${apiUrl}/api/admin/ingestor/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -693,12 +699,12 @@ async function ingestorImportStream(
   results: ImportResult[];
 }> {
   const { accessToken } = getTokens();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3838';
+  const apiUrl = getApiUrl();
   
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
     
-    fetch(`${API_URL}/api/admin/ingestor/import`, {
+    fetch(`${apiUrl}/api/admin/ingestor/import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
