@@ -18,11 +18,30 @@ import type {
   QueueStats,
 } from '@/types';
 
-// Safe API URL getter that handles SSR/prerendering where process may be undefined
+// Safe API URL getter that works in SSR and the browser without assuming localhost
 const getApiUrl = (): string => {
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  // Highest priority: explicit public env var (works in Vercel/Netlify/etc)
+  const envUrl =
+    (typeof process !== 'undefined' && (process.env?.NEXT_PUBLIC_API_URL || process.env?.API_URL)) ||
+    null;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
   }
+
+  // Next/Vercel exposes VERCEL_URL without protocol on server
+  if (typeof process !== 'undefined' && process.env?.VERCEL_URL) {
+    const vercelUrl = process.env.VERCEL_URL.startsWith('http')
+      ? process.env.VERCEL_URL
+      : `https://${process.env.VERCEL_URL}`;
+    return vercelUrl.replace(/\/$/, '');
+  }
+
+  // Browser fallback: same origin as the loaded site
+  if (typeof window !== 'undefined') {
+    return window.location.origin.replace(/\/$/, '');
+  }
+
+  // Local dev fallback
   return 'http://localhost:3838';
 };
 
