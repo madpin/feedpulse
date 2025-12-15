@@ -77,30 +77,30 @@ function AdvancedSearchContent() {
   const [isLoading, setIsLoading] = useState(!USE_MOCK);
 
   // Initialize filters from URL params
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') || '');
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    searchParams.get('categories')?.split(',').filter(Boolean) || []
+    searchParams?.get('categories')?.split(',').filter(Boolean) || []
   );
   const [selectedTags, setSelectedTags] = useState<string[]>(
-    searchParams.get('tags')?.split(',').filter(Boolean) || []
+    searchParams?.get('tags')?.split(',').filter(Boolean) || []
   );
   const [selectedContentTypes, setSelectedContentTypes] = useState<string[]>(
-    searchParams.get('contentTypes')?.split(',').filter(Boolean) || []
+    searchParams?.get('contentTypes')?.split(',').filter(Boolean) || []
   );
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
-    searchParams.get('languages')?.split(',').filter(Boolean) || []
+    searchParams?.get('languages')?.split(',').filter(Boolean) || []
   );
   const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>(
-    searchParams.get('frequencies')?.split(',').filter(Boolean) || []
+    searchParams?.get('frequencies')?.split(',').filter(Boolean) || []
   );
   const [minPostsPerWeek, setMinPostsPerWeek] = useState(
-    searchParams.get('minPosts') || ''
+    searchParams?.get('minPosts') || ''
   );
   const [maxPostsPerWeek, setMaxPostsPerWeek] = useState(
-    searchParams.get('maxPosts') || ''
+    searchParams?.get('maxPosts') || ''
   );
   const [sortBy, setSortBy] = useState<SortOption>(
-    (searchParams.get('sortBy') as SortOption) || 'score'
+    (searchParams?.get('sortBy') as SortOption) || 'score'
   );
 
   // Fetch data on mount
