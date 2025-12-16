@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - develop
+      - v2
     tags:
       - 'v*'
   pull_request:
     branches:
       - main
       - develop
+      - v2
   workflow_dispatch:
 
 env:
