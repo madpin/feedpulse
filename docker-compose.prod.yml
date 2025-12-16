@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - feedpulse-network
+
+  # Redis for job queue
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - feedpulse-network
+
+  # Backend API
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-yourusername/feedpulse}/backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      BACKEND_PORT: 3838
+      BACKEND_HOST: 0.0.0.0
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      FEED_UPDATE_INTERVAL_HOURS: ${FEED_UPDATE_INTERVAL_HOURS:-1}
+      USE_READABILITY_DEFAULT: ${USE_READABILITY_DEFAULT:-true}
+      MAX_CONCURRENT_FEED_UPDATES: ${MAX_CONCURRENT_FEED_UPDATES:-5}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3838/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - feedpulse-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.feedpulse-backend.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.feedpulse-backend.entrypoints=websecure"
+      - "traefik.http.routers.feedpulse-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.feedpulse-backend.loadbalancer.server.port=3838"
+
+  # Frontend (Next.js)
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY:-yourusername/feedpulse}/frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      PORT: 3737
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - feedpulse-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.feedpulse-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.feedpulse-frontend.entrypoints=websecure"
+      - "traefik.http.routers.feedpulse-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.feedpulse-frontend.loadbalancer.server.port=3737"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  feedpulse-network:
+    driver: bridge
+
